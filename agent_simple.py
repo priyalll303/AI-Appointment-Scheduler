@@ -6,8 +6,6 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import MemorySaver
 from calendar_tools import calendar_tools
 from utils import extract_datetime_info, format_response
 import re
@@ -17,33 +15,24 @@ class TailorTalkAgent:
     
     def __init__(self):
         self.llm = self._initialize_llm()
-        self.checkpointer = MemorySaver()
         self.conversation_history = []
         self.system_prompt = self._get_system_prompt()
-        # Create the ReAct agent using LangGraph prebuilt
-        self.agent = create_react_agent(
-            self.llm,
-            calendar_tools,
-            checkpointer=self.checkpointer
-        )
     
     def _initialize_llm(self):
         """Initialize the language model"""
-        # Try Anthropic first
-        anthropic_key = os.getenv('ANTHROPIC_API_KEY')
-        if anthropic_key:
-            return ChatAnthropic(
-                model="claude-sonnet-4-20250514",  # Latest model as of 2025
-                api_key=anthropic_key,
-                temperature=0.1
-            )
-        
-        # Fallback to OpenAI
+        # Try OpenAI first since user provided that key
         openai_key = os.getenv('OPENAI_API_KEY')
         if openai_key:
             return ChatOpenAI(
-                model="gpt-4o",  # Latest OpenAI model
-                api_key=openai_key,
+                model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+                temperature=0.1
+            )
+        
+        # Fallback to Anthropic
+        anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+        if anthropic_key:
+            return ChatAnthropic(
+                model="claude-3-5-sonnet-20241022",  # Using stable model
                 temperature=0.1
             )
         
@@ -51,7 +40,7 @@ class TailorTalkAgent:
     
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the agent"""
-        return """You are TailorTalk, an intelligent AI assistant specialized in appointment scheduling and calendar management. 
+        return f"""You are TailorTalk, an intelligent AI assistant specialized in appointment scheduling and calendar management. 
 
 Your capabilities include:
 - Understanding natural language requests for booking, checking, and managing appointments
@@ -69,7 +58,7 @@ Guidelines:
 5. Suggest alternatives when requested times are unavailable
 6. Use available tools to interact with the calendar system
 
-Current date and time: {current_datetime}
+Current date and time: {datetime.now().strftime("%Y-%m-%d %H:%M")}
 
 Available tools:
 - check_availability: Check available time slots for a date
@@ -77,9 +66,7 @@ Available tools:
 - list_upcoming_appointments: Show upcoming appointments
 - cancel_appointment: Cancel an existing appointment
 
-Remember to be natural and conversational while being precise about appointment details.""".format(
-            current_datetime=datetime.now().strftime("%Y-%m-%d %H:%M")
-        )
+Remember to be natural and conversational while being precise about appointment details."""
     
     def analyze_request(self, user_message: str) -> Dict[str, Any]:
         """Analyze user request and extract intent and details"""
@@ -156,45 +143,68 @@ Remember to be natural and conversational while being precise about appointment 
     def process_message(self, user_message: str) -> str:
         """Main entry point for processing user messages"""
         try:
-            # Create a unique thread ID for this conversation
-            thread_id = f"conversation_{len(self.conversation_history)}"
-            config = {"configurable": {"thread_id": thread_id}}
-            
-            # Prepare the input with system message
-            input_message = {
-                "messages": [
-                    SystemMessage(content=self.system_prompt),
-                    HumanMessage(content=user_message)
-                ]
-            }
-            
-            # Get response from the agent
-            response = self.agent.invoke(input_message, config)
-            
-            # Extract the final message
-            if response and "messages" in response:
-                last_message = response["messages"][-1]
-                if hasattr(last_message, 'content'):
-                    assistant_message = last_message.content
-                else:
-                    assistant_message = str(last_message)
-            else:
-                assistant_message = "I apologize, but I couldn't process your request properly."
-            
             # Add to conversation history
             self.conversation_history.append(HumanMessage(content=user_message))
+            
+            # Create messages for LLM with system prompt and conversation history
+            messages = [
+                SystemMessage(content=self.system_prompt),
+                *self.conversation_history[-10:],  # Keep last 10 messages for context
+            ]
+            
+            # Bind tools to the model
+            llm_with_tools = self.llm.bind_tools(calendar_tools)
+            
+            # Get response from LLM
+            response = llm_with_tools.invoke(messages)
+            
+            # Handle tool calls if present
+            if hasattr(response, 'tool_calls') and response.tool_calls:
+                tool_responses = []
+                for tool_call in response.tool_calls:
+                    tool_result = self._execute_tool_call(tool_call)
+                    tool_responses.append(tool_result)
+                
+                # Create follow-up message with tool results
+                tool_message = f"Tool execution results: {'; '.join(tool_responses)}"
+                follow_up_messages = messages + [
+                    response,
+                    HumanMessage(content=tool_message)
+                ]
+                
+                # Get final response incorporating tool results
+                final_response = self.llm.invoke(follow_up_messages)
+                assistant_message = final_response.content
+            else:
+                assistant_message = response.content
+            
+            # Add assistant response to history
             self.conversation_history.append(AIMessage(content=assistant_message))
             
             # Format and return response
-            return format_response(assistant_message)
+            return format_response(str(assistant_message))
             
         except Exception as e:
             error_message = f"I apologize, but I encountered an unexpected error: {str(e)}"
-            self.conversation_history.append(HumanMessage(content=user_message))
             self.conversation_history.append(AIMessage(content=error_message))
             return error_message
     
-
+    def _execute_tool_call(self, tool_call) -> str:
+        """Execute a tool call and return the result"""
+        try:
+            tool_name = tool_call['name']
+            tool_args = tool_call['args']
+            
+            # Find and execute the appropriate tool
+            for tool in calendar_tools:
+                if tool.name == tool_name:
+                    result = tool.invoke(tool_args)
+                    return f"{tool_name}: {result}"
+            
+            return f"Tool {tool_name} not found"
+            
+        except Exception as e:
+            return f"Error executing {tool_call.get('name', 'unknown tool')}: {str(e)}"
     
     @property
     def calendar_service(self):

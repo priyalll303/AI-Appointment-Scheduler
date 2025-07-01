@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from datetime import datetime, timedelta
-from agent import TailorTalkAgent
+from agent_demo import TailorTalkAgent
 import traceback
 
 # Page configuration
@@ -121,6 +121,19 @@ def main():
             6. Share your calendar with the service account email
             
             **Without setup:** App works in demo mode with simulated responses.
+            
+            📖 **[Complete Setup Guide](./GOOGLE_CALENDAR_SETUP.md)**
+            """)
+        
+        with st.expander("Quick Test Commands"):
+            st.markdown("""
+            **Try these example commands:**
+            - "What's my availability tomorrow?"
+            - "Book a team meeting tomorrow at 2 PM"
+            - "Show my upcoming appointments"
+            - "Cancel my meeting on Friday"
+            
+            **Note:** Calendar integration shows placeholder responses until Google Calendar is connected.
             """)
         
         if st.button("🔄 Reset Conversation"):
