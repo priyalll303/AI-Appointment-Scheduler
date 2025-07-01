@@ -77,7 +77,7 @@ def main():
         st.error("⚠️ Agent initialization failed. Please check your configuration and API keys.")
         st.info("""
         **Required Environment Variables:**
-        - `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`: Your LLM API key
+        - `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`: Your LLM API key ✅ (Configured)
         - `GOOGLE_CALENDAR_ID`: Your Google Calendar ID (optional, defaults to primary)
         
         **Required Files:**
@@ -97,15 +97,31 @@ def main():
         The AI will understand your request and help you manage your calendar!
         """)
         
-        st.header("🔧 Agent Status")
+        st.header("🔧 System Status")
         if st.session_state.agent:
-            st.success("✅ Agent Active")
+            st.success("✅ AI Agent Active")
             if hasattr(st.session_state.agent, 'calendar_service') and st.session_state.agent.calendar_service:
-                st.success("✅ Calendar Connected")
+                st.success("✅ Google Calendar Connected")
             else:
-                st.warning("⚠️ Calendar Not Connected")
+                st.warning("⚠️ Google Calendar Not Connected")
+                st.info("📝 Calendar features work in demo mode. For real calendar integration, set up Google service account credentials.")
         else:
-            st.error("❌ Agent Inactive")
+            st.error("❌ AI Agent Inactive")
+        
+        st.header("🛠️ Setup Instructions")
+        with st.expander("Google Calendar Setup (Optional)"):
+            st.markdown("""
+            **To connect your Google Calendar:**
+            
+            1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+            2. Create a new project or select existing
+            3. Enable Google Calendar API
+            4. Create service account credentials
+            5. Download JSON file and replace `credentials.json`
+            6. Share your calendar with the service account email
+            
+            **Without setup:** App works in demo mode with simulated responses.
+            """)
         
         if st.button("🔄 Reset Conversation"):
             st.session_state.messages = []

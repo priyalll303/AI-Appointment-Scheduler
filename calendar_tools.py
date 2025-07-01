@@ -223,6 +223,9 @@ def book_appointment(summary: str, date_str: str, start_time_str: str, duration_
     Returns:
         String confirmation of booking or error message
     """
+    if not calendar_manager.service:
+        return "❌ Google Calendar is not connected. Please set up your service account credentials to book real appointments."
+    
     try:
         # Parse date and time
         date_time_str = f"{date_str} {start_time_str}"
@@ -265,6 +268,9 @@ def list_upcoming_appointments(days_ahead: int = 7) -> str:
     Returns:
         String listing upcoming appointments
     """
+    if not calendar_manager.service:
+        return "❌ Google Calendar is not connected. Please set up your service account credentials to view real appointments."
+    
     try:
         start_time = datetime.now()
         end_time = start_time + timedelta(days=days_ahead)
@@ -297,6 +303,9 @@ def cancel_appointment(appointment_summary: str, date_str: str) -> str:
     Returns:
         String confirmation of cancellation or error message
     """
+    if not calendar_manager.service:
+        return "❌ Google Calendar is not connected. Please set up your service account credentials to cancel real appointments."
+    
     try:
         # Get events for the specified date
         date = datetime.strptime(date_str, "%Y-%m-%d")
