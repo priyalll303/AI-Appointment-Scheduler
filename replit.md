@@ -99,7 +99,26 @@ The system requires:
 
 Preferred communication style: Simple, everyday language.
 
-## Changelog
+## Recent Changes
 
-Changelog:
-- July 01, 2025. Initial setup
+- July 01, 2025: Complete TailorTalk system implementation
+  - Built conversational AI agent with OpenAI GPT-4o integration
+  - Implemented Streamlit web interface with chat functionality  
+  - Added Google Calendar API integration with service account authentication
+  - Created comprehensive setup guide and automated testing script
+  - Added demo mode for quota-limited scenarios
+  - Implemented natural language processing for appointment scheduling
+
+## User Preferences
+
+- Prefers simple, everyday language for communication
+- Wants fully functional system with both AI and calendar integration
+- Expects demo mode to work when API quotas are exceeded
+
+## Deployment Notes
+
+The application is designed for easy deployment with:
+- Environment variable configuration for API keys
+- Graceful fallback to demo mode when quotas exceeded
+- Clear setup instructions for Google Calendar integration
+- Automated testing scripts for verifying connections

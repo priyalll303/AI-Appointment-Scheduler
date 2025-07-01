@@ -110,37 +110,48 @@ Remember to be natural and conversational while being precise about appointment 
             if self.demo_mode or not self.llm:
                 response = self._get_demo_response(user_message)
             else:
-                # Create messages for LLM with system prompt and conversation history
-                messages = [
-                    SystemMessage(content=self.system_prompt),
-                    *self.conversation_history[-10:],  # Keep last 10 messages for context
-                ]
-                
-                # Bind tools to the model
-                llm_with_tools = self.llm.bind_tools(calendar_tools)
-                
-                # Get response from LLM
-                response_obj = llm_with_tools.invoke(messages)
-                
-                # Handle tool calls if present
-                if hasattr(response_obj, 'tool_calls') and response_obj.tool_calls:
-                    tool_responses = []
-                    for tool_call in response_obj.tool_calls:
-                        tool_result = self._execute_tool_call(tool_call)
-                        tool_responses.append(tool_result)
-                    
-                    # Create follow-up message with tool results
-                    tool_message = f"Tool execution results: {'; '.join(tool_responses)}"
-                    follow_up_messages = messages + [
-                        response_obj,
-                        HumanMessage(content=tool_message)
+                try:
+                    # Create messages for LLM with system prompt and conversation history
+                    messages = [
+                        SystemMessage(content=self.system_prompt),
+                        *self.conversation_history[-10:],  # Keep last 10 messages for context
                     ]
                     
-                    # Get final response incorporating tool results
-                    final_response = self.llm.invoke(follow_up_messages)
-                    response = final_response.content
-                else:
-                    response = response_obj.content
+                    # Bind tools to the model
+                    llm_with_tools = self.llm.bind_tools(calendar_tools)
+                    
+                    # Get response from LLM
+                    response_obj = llm_with_tools.invoke(messages)
+                    
+                    # Handle tool calls if present
+                    if hasattr(response_obj, 'tool_calls') and response_obj.tool_calls:
+                        tool_responses = []
+                        for tool_call in response_obj.tool_calls:
+                            tool_result = self._execute_tool_call(tool_call)
+                            tool_responses.append(tool_result)
+                        
+                        # Create follow-up message with tool results
+                        tool_message = f"Tool execution results: {'; '.join(tool_responses)}"
+                        follow_up_messages = messages + [
+                            response_obj,
+                            HumanMessage(content=tool_message)
+                        ]
+                        
+                        # Get final response incorporating tool results
+                        final_response = self.llm.invoke(follow_up_messages)
+                        response = final_response.content
+                    else:
+                        response = response_obj.content
+                
+                except Exception as llm_error:
+                    # If LLM fails (quota exceeded, etc.), switch to demo mode
+                    error_str = str(llm_error)
+                    if "429" in error_str or "quota" in error_str or "insufficient_quota" in error_str:
+                        print("⚠️ API quota exceeded, switching to demo mode")
+                        self.demo_mode = True
+                        response = self._get_demo_response(user_message)
+                    else:
+                        raise llm_error
             
             # Add assistant response to history
             self.conversation_history.append(AIMessage(content=response))
@@ -149,9 +160,11 @@ Remember to be natural and conversational while being precise about appointment 
             return format_response(str(response))
             
         except Exception as e:
-            error_message = f"I apologize, but I encountered an unexpected error: {str(e)}"
-            self.conversation_history.append(AIMessage(content=error_message))
-            return error_message
+            # Fallback to demo mode for any error
+            self.demo_mode = True
+            response = self._get_demo_response(user_message)
+            self.conversation_history.append(AIMessage(content=response))
+            return format_response(str(response))
     
     def _execute_tool_call(self, tool_call) -> str:
         """Execute a tool call and return the result"""

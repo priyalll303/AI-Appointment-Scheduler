@@ -100,29 +100,57 @@ def main():
         st.header("🔧 System Status")
         if st.session_state.agent:
             st.success("✅ AI Agent Active")
+            if hasattr(st.session_state.agent, 'demo_mode') and st.session_state.agent.demo_mode:
+                st.info("🎯 Running in Demo Mode")
             if hasattr(st.session_state.agent, 'calendar_service') and st.session_state.agent.calendar_service:
                 st.success("✅ Google Calendar Connected")
             else:
                 st.warning("⚠️ Google Calendar Not Connected")
-                st.info("📝 Calendar features work in demo mode. For real calendar integration, set up Google service account credentials.")
+                st.info("📝 Currently using demo responses. Connect Google Calendar for real integration.")
         else:
             st.error("❌ AI Agent Inactive")
         
-        st.header("🛠️ Setup Instructions")
-        with st.expander("Google Calendar Setup (Optional)"):
+        st.header("🛠️ Google Calendar Integration")
+        with st.expander("📅 Connect Your Calendar (Click to Expand)"):
             st.markdown("""
-            **To connect your Google Calendar:**
+            **Quick Setup Steps:**
             
-            1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-            2. Create a new project or select existing
-            3. Enable Google Calendar API
-            4. Create service account credentials
-            5. Download JSON file and replace `credentials.json`
-            6. Share your calendar with the service account email
+            1. **Create Google Cloud Project**
+               - Go to [Google Cloud Console](https://console.cloud.google.com/)
+               - Create new project or select existing one
             
-            **Without setup:** App works in demo mode with simulated responses.
+            2. **Enable API & Create Credentials**
+               - Enable Google Calendar API
+               - Create service account credentials
+               - Download JSON credentials file
             
-            📖 **[Complete Setup Guide](./GOOGLE_CALENDAR_SETUP.md)**
+            3. **Update TailorTalk**
+               - Replace `credentials.json` with your downloaded file
+               - Share your calendar with the service account email
+            
+            4. **Test Connection**
+               - Run: `python setup_google_calendar.py`
+               - Follow the verification steps
+            
+            📖 **[Detailed Setup Guide](./GOOGLE_CALENDAR_SETUP.md)**
+            """)
+            
+            if st.button("🧪 Test Calendar Connection"):
+                st.info("Run `python setup_google_calendar.py` in terminal to test your Google Calendar setup.")
+        
+        with st.expander("📝 Current Features"):
+            st.markdown("""
+            **Available Now (Demo Mode):**
+            - Natural language appointment scheduling
+            - Conversation-based calendar management
+            - Smart date/time extraction
+            - Professional chat interface
+            
+            **With Google Calendar Connected:**
+            - Real appointment booking
+            - Actual availability checking
+            - Live calendar synchronization
+            - Event conflict detection
             """)
         
         with st.expander("Quick Test Commands"):
