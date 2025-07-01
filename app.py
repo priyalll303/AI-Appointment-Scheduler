@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from datetime import datetime, timedelta
-from agent_demo import TailorTalkAgent
+from agent_simple import TailorTalkAgent
 import traceback
 
 # Page configuration
