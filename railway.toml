@@ -1,0 +1,18 @@
+# Railway deployment configuration
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/_stcore/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+
+[[services]]
+name = "tailortalk"
+source = "."
+
+[services.tailortalk]
+build.dockerfile = "Dockerfile"
+variables.PORT = "5000"
+variables.STREAMLIT_SERVER_PORT = "5000"
+variables.STREAMLIT_SERVER_ADDRESS = "0.0.0.0"
