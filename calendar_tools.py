@@ -164,6 +164,9 @@ def check_availability(date_str: str, start_hour: int = 9, end_hour: int = 17) -
     Returns:
         String describing availability with time slots
     """
+    if not calendar_manager.service:
+        return "❌ Google Calendar is not connected. Please set up your service account credentials to check real availability."
+    
     try:
         # Parse the date
         date = datetime.strptime(date_str, "%Y-%m-%d")
